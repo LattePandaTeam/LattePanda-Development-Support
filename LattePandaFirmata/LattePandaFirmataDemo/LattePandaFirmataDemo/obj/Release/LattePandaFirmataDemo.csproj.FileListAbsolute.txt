@@ -1,0 +1,8 @@
+C:\Users\LattePanda\Desktop\LattePandaFirmata\LattePandaFirmataDemo\LattePandaFirmataDemo\bin\Release\LattePandaFirmataDemo.exe.config
+C:\Users\LattePanda\Desktop\LattePandaFirmata\LattePandaFirmataDemo\LattePandaFirmataDemo\bin\Release\LattePandaFirmataDemo.exe
+C:\Users\LattePanda\Desktop\LattePandaFirmata\LattePandaFirmataDemo\LattePandaFirmataDemo\bin\Release\LattePandaFirmataDemo.pdb
+C:\Users\LattePanda\Desktop\LattePandaFirmata\LattePandaFirmataDemo\LattePandaFirmataDemo\obj\Release\LattePandaFirmataDemo.Form1.resources
+C:\Users\LattePanda\Desktop\LattePandaFirmata\LattePandaFirmataDemo\LattePandaFirmataDemo\obj\Release\LattePandaFirmataDemo.Properties.Resources.resources
+C:\Users\LattePanda\Desktop\LattePandaFirmata\LattePandaFirmataDemo\LattePandaFirmataDemo\obj\Release\LattePandaFirmataDemo.csproj.GenerateResource.Cache
+C:\Users\LattePanda\Desktop\LattePandaFirmata\LattePandaFirmataDemo\LattePandaFirmataDemo\obj\Release\LattePandaFirmataDemo.exe
+C:\Users\LattePanda\Desktop\LattePandaFirmata\LattePandaFirmataDemo\LattePandaFirmataDemo\obj\Release\LattePandaFirmataDemo.pdb

@@ -1,0 +1,17 @@
+\\psf\home\documents\visual studio 2015\Projects\LattePandaFirmataDemo\LattePandaFirmataDemo\bin\Debug\LattePandaFirmataDemo.exe.config
+\\psf\Home\Documents\Visual Studio 2015\Projects\LattePandaFirmataDemo\LattePandaFirmataDemo\bin\Debug\LattePandaFirmataDemo.exe
+\\psf\Home\Documents\Visual Studio 2015\Projects\LattePandaFirmataDemo\LattePandaFirmataDemo\bin\Debug\LattePandaFirmataDemo.pdb
+\\psf\Home\Documents\Visual Studio 2015\Projects\LattePandaFirmataDemo\LattePandaFirmataDemo\obj\Debug\LattePandaFirmataDemo.csprojResolveAssemblyReference.cache
+\\psf\Home\Documents\Visual Studio 2015\Projects\LattePandaFirmataDemo\LattePandaFirmataDemo\obj\Debug\LattePandaFirmataDemo.Form1.resources
+\\psf\Home\Documents\Visual Studio 2015\Projects\LattePandaFirmataDemo\LattePandaFirmataDemo\obj\Debug\LattePandaFirmataDemo.Properties.Resources.resources
+\\psf\Home\Documents\Visual Studio 2015\Projects\LattePandaFirmataDemo\LattePandaFirmataDemo\obj\Debug\LattePandaFirmataDemo.csproj.GenerateResource.Cache
+\\psf\Home\Documents\Visual Studio 2015\Projects\LattePandaFirmataDemo\LattePandaFirmataDemo\obj\Debug\LattePandaFirmataDemo.exe
+\\psf\Home\Documents\Visual Studio 2015\Projects\LattePandaFirmataDemo\LattePandaFirmataDemo\obj\Debug\LattePandaFirmataDemo.pdb
+C:\Users\LattePanda\Desktop\LattePandaFirmata\LattePandaFirmataDemo\LattePandaFirmataDemo\bin\Debug\LattePandaFirmataDemo.exe.config
+C:\Users\LattePanda\Desktop\LattePandaFirmata\LattePandaFirmataDemo\LattePandaFirmataDemo\obj\Debug\LattePandaFirmataDemo.exe
+C:\Users\LattePanda\Desktop\LattePandaFirmata\LattePandaFirmataDemo\LattePandaFirmataDemo\obj\Debug\LattePandaFirmataDemo.pdb
+C:\Users\LattePanda\Desktop\LattePandaFirmata\LattePandaFirmataDemo\LattePandaFirmataDemo\bin\Debug\LattePandaFirmataDemo.exe
+C:\Users\LattePanda\Desktop\LattePandaFirmata\LattePandaFirmataDemo\LattePandaFirmataDemo\bin\Debug\LattePandaFirmataDemo.pdb
+C:\Users\LattePanda\Desktop\LattePandaFirmata\LattePandaFirmataDemo\LattePandaFirmataDemo\obj\Debug\LattePandaFirmataDemo.Form1.resources
+C:\Users\LattePanda\Desktop\LattePandaFirmata\LattePandaFirmataDemo\LattePandaFirmataDemo\obj\Debug\LattePandaFirmataDemo.Properties.Resources.resources
+C:\Users\LattePanda\Desktop\LattePandaFirmata\LattePandaFirmataDemo\LattePandaFirmataDemo\obj\Debug\LattePandaFirmataDemo.csproj.GenerateResource.Cache
