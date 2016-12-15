@@ -5,6 +5,7 @@ Contains the following:
 
 - LattePanda C# Firmata library (Access GPIO from Visual Studio)
 - LattePanda C# Firmata Demo
+- FirmateWebClient: a hardware control platform that can be accessed on the web
 
 ### To download, please click "Download ZIP"
 
