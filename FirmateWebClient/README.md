@@ -11,10 +11,10 @@ FirmateWebClient: a hardware control platform that can be accessed on the web
 
 # Table of Contents
 
--   [Introduction](#Introduction)
+-   [Introduction](#introduction)
 -   [Install and run the client](#install-and-run-the-client)
--   [Usage](#Usage)
--   [Examples](#Examples)
+-   [Usage](#usage)
+-   [Examples](#examples)
 
 
 
@@ -48,7 +48,7 @@ npm install johnny-five
 npm install serialport
 ```
 
--   Follow this [tutorial](#http://www.lattepanda.com/docs/#SetuptheArduino) to setup your arduino
+-   Follow this [tutorial](http://www.lattepanda.com/docs/#SetuptheArduino) to setup your arduino
 
 -   Run the client using the following commands:
 
