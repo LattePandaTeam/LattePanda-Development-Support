@@ -29,7 +29,7 @@ using System.Threading;
 
 namespace LattePanda.Firmata
 {
-    public delegate void DidI2CDataReveive(byte address,byte register, byte[] data);
+    public delegate void DidI2CDataReveive(byte address, byte register, byte[] data);
     public delegate void DigitalPinUpdated(byte pin, byte state);
     public delegate void AnalogPinUpdated(int pin, int value);
 
@@ -52,6 +52,31 @@ namespace LattePanda.Firmata
         public event DigitalPinUpdated digitalPinUpdated;
         public event AnalogPinUpdated analogPinUpdated;
 
+        public const int MAX_DATA_BYTES = 64;
+        public const int DIGITAL_MESSAGE = 0x90; // send data for a digital port
+        public const int ANALOG_MESSAGE = 0xE0; // send data for an analog pin (or PWM)
+        public const int REPORT_VERSION = 0xF9; // report firmware version
+        public const int START_SYSEX = 0xF0; // start a MIDI SysEx message
+        public const int END_SYSEX = 0xF7; // end a MIDI SysEx message
+        public const int I2C_REPLY = 0x77; // I2C reply messages from an I/O board to a host
+
+        private const int TOTAL_PORTS = 2;
+        private const int SERVO_CONFIG = 0x70; // set max angle, minPulse, maxPulse, freq
+        private const int REPORT_ANALOG = 0xC0; // enable analog input by pin #
+        private const int REPORT_DIGITAL = 0xD0; // enable digital input by port
+        private const int SET_PIN_MODE = 0xF4; // set a pin to INPUT/OUTPUT/PWM/etc
+        private const int SYSTEM_RESET = 0xFF; // reset from MIDI
+        private const int I2C_REQUEST = 0x76; // I2C request messages from a host to an I/O board
+        private const int I2C_CONFIG = 0x78; // Configure special I2C settings such as power pins and delay times
+        private SerialPort _serialPort;
+        private int _delay;
+
+        public volatile int[] _digitalOutputData = new int[MAX_DATA_BYTES];
+        public volatile int[] _digitalInputData = new int[MAX_DATA_BYTES];
+        public volatile int[] _analogInputData = new int[MAX_DATA_BYTES];
+
+        private Thread _readThread = null;
+
         /// <summary>
         ///
         /// </summary>
@@ -61,8 +86,10 @@ namespace LattePanda.Firmata
         ///                     use the Open() method to open the connection manually.</param>
         /// <param name="_delay">Time delay that may be required to allow some arduino models
         ///                     to reboot after opening a serial connection. The delay will only activate
-        ///                     when autoStart is true.</param>
-        public Arduino(string serialPortName, Int32 baudRate, bool autoStart, int delay)
+        ///                     when autoStart is true.</param> 
+        /// <param name="autoListen">This parameter activate listen mode. Without this mode you will be
+        ///                         unable to use events. This param will only activate when autoStart is true.</param>
+        public Arduino(string serialPortName, Int32 baudRate, bool autoStart, int delay, bool autoListen = true)
         {
             _serialPort = new SerialPort(serialPortName, baudRate);
             _serialPort.DataBits = 8;
@@ -72,7 +99,7 @@ namespace LattePanda.Firmata
             if (autoStart)
             {
                 this._delay = delay;
-                this.Open();
+                this.Open(autoListen);
             }
         }
 
@@ -104,7 +131,7 @@ namespace LattePanda.Firmata
         /// Opens the serial port connection, should it be required. By default the port is
         /// opened when the object is first created.
         /// </summary>
-        public void Open()
+        public void Open(bool isListen)
         {
             _serialPort.DtrEnable = true;
             _serialPort.Open();
@@ -128,10 +155,9 @@ namespace LattePanda.Firmata
             }
             command = null;
 
-            if (_readThread == null)
+            if (isListen)
             {
-                _readThread = new Thread(processInput);
-                _readThread.Start();
+                this.StartListen();
             }
         }
         /// <summary>
@@ -139,12 +165,53 @@ namespace LattePanda.Firmata
         /// </summary>
         public void Close()
         {
-            _readThread.Join(500);
-            _readThread = null;
+            StopListen();
             _serialPort.Close();
         }
 
         /// <summary>
+        /// Start separate thread to monitor Firmata data for events didI2CDataReveive, digitalPinUpdated and analogPinUpdated
+        /// </summary>
+        public void StartListen()
+        {
+            if (_readThread == null)
+            {
+                _readThread = new Thread(processInput);
+                _readThread.Start();
+            }
+        }
+
+        /// <summary>
+        /// Stop monitor thread
+        /// </summary>
+        public void StopListen()
+        {
+            if (_readThread != null)
+            {
+                // Hold child thread
+                _readThread.Join(500);
+                // GC thread
+                _readThread = null;
+            }
+        }
+
+        internal void callDidI2CDataReveive(byte address, byte register, byte[] data)
+        {
+            if (this.didI2CDataReveive != null)
+                this.didI2CDataReveive(address, register, data);
+        }
+        internal void callDigitalPinUpdated(byte pin, byte state)
+        {
+            if (this.digitalPinUpdated != null)
+                this.digitalPinUpdated(pin, state);
+        }
+        internal void callAnalogPinUpdated(int pin, int value)
+        {
+            if (this.analogPinUpdated != null)
+                this.analogPinUpdated(pin, value);
+        }
+
+        /// <summary>     
         /// Lists all available serial ports on current system.
         /// </summary>
         /// <returns>An array of strings containing all available serial ports.</returns>
@@ -173,7 +240,7 @@ namespace LattePanda.Firmata
         /// <returns>Arduino.HIGH or Arduino.LOW</returns>
         public int digitalRead(int pin)
         {
-            return((_digitalInputData[pin >> 3] >> (pin & 0x07)) & 0x01);
+            return ((_digitalInputData[pin >> 3] >> (pin & 0x07)) & 0x01);
         }
 
         /// <summary>
@@ -253,7 +320,7 @@ namespace LattePanda.Firmata
         /// <param name="slaveRegister">value either I2C slave Register or Arduino.NONE</param>
         /// <param name="data">Write data or length of read data.</param>
         /// <param name="mode">Value either Arduino.I2C_MODE_WRITE or Arduino.I2C_MODE_READ_ONCE or Arduino.I2C_MODE_READ_ONCE or Arduino.I2C_MODE_STOP_READING</param>
-        public void wireRequest(byte slaveAddress,Int16 slaveRegister, Int16[] data,byte mode)
+        public void wireRequest(byte slaveAddress, Int16 slaveRegister, Int16[] data, byte mode)
         {
             byte[] message = new byte[MAX_DATA_BYTES];
             message[0] = (byte)(0xF0);
@@ -261,12 +328,12 @@ namespace LattePanda.Firmata
             message[2] = (byte)(slaveAddress);
             message[3] = (byte)(mode);
             int index = 4;
-            if(slaveRegister != Arduino.NONE)
+            if (slaveRegister != Arduino.NONE)
             {
-              message[index] = (byte)(slaveRegister & 0x7F);
-              index += 1;
-              message[index] = (byte)(slaveRegister >> 7);
-              index += 1;
+                message[index] = (byte)(slaveRegister & 0x7F);
+                index += 1;
+                message[index] = (byte)(slaveRegister >> 7);
+                index += 1;
             }
             for (int i = 0; i < (data.Count()); i++)
             {
@@ -276,153 +343,157 @@ namespace LattePanda.Firmata
                 index += 1;
             }
             message[index] = (byte)(END_SYSEX);
-            _serialPort.Write(message, 0, index+1);
+            _serialPort.Write(message, 0, index + 1);
         }
         private int available()
         {
             return _serialPort.BytesToRead;
         }
+
+        /// <summary>
+        /// This function executes only in thread
+        /// </summary>
         public void processInput()
         {
-            while (_serialPort.IsOpen)
-            {
-                if (_serialPort.BytesToRead > 0)
-                {
-                    lock (this)
-                    {
-                        int inputData = _serialPort.ReadByte();
-                        int command;
+            var autoEvent = new AutoResetEvent(false);
+            var inputProcessor = new InputProcessor(_serialPort, this);
+            // Execute method by a timer every 30ms
+            var stateTimer = new Timer(inputProcessor.InputProcess, autoEvent, 0, 30);
 
-                        if (_parsingSysex)
-                        {
-                            if (inputData == END_SYSEX)
-                            {
-                                _parsingSysex = false;
-                                if(_sysexBytesRead>5 && _storedInputData[0] == I2C_REPLY)
-                                {
-                                    byte[] i2cReceivedData = new byte[(_sysexBytesRead-1)/2];
-                                    for (int i = 0; i < i2cReceivedData.Count(); i++)
-                                    {
-                                        i2cReceivedData[i] = (byte)(_storedInputData[(i*2)+1] | _storedInputData[(i * 2) + 2] << 7);
-                                    }
-                                    if(this.didI2CDataReveive != null)
-                                    didI2CDataReveive(i2cReceivedData[0], i2cReceivedData[1], i2cReceivedData.Skip(2).ToArray());
-
-                                }
-                                _sysexBytesRead = 0;
-                            }
-                            else
-                            {
-                               _storedInputData[_sysexBytesRead] = inputData;
-                               _sysexBytesRead++;
-                            }
-                        }
-                        else if (_waitForData > 0 && inputData < 128)
-                        {
-                            _waitForData--;
-                            _storedInputData[_waitForData] = inputData;
-
-                            if (_executeMultiByteCommand != 0 && _waitForData == 0)
-                            {
-                                //we got everything
-                                switch (_executeMultiByteCommand)
-                                {
-                                    case DIGITAL_MESSAGE:
-                                        int currentDigitalInput = (_storedInputData[0] << 7) + _storedInputData[1];
-                                        for (int i = 0; i < 8; i++)
-                                        {
-                                          if (((1 << i) & (currentDigitalInput & 0xff)) != ((1 << i) & (_digitalInputData[_multiByteChannel] & 0xff)))
-                                            {
-                                                if ((((1 << i) & (currentDigitalInput & 0xff))) != 0)
-                                                {
-                                                    if (this.digitalPinUpdated != null)
-                                                        this.digitalPinUpdated((byte)(i + _multiByteChannel * 8), Arduino.HIGH);
-                                                }
-                                                else
-                                                {
-                                                    if (this.digitalPinUpdated != null)
-                                                        this.digitalPinUpdated((byte)(i + _multiByteChannel * 8), Arduino.LOW);
-                                                }
-                                            }
-                                        }
-                                        _digitalInputData[_multiByteChannel] = (_storedInputData[0] << 7) + _storedInputData[1];
-
-                                        break;
-                                    case ANALOG_MESSAGE:
-                                        _analogInputData[_multiByteChannel] = (_storedInputData[0] << 7) + _storedInputData[1];
-                                        if (this.analogPinUpdated != null)
-                                            analogPinUpdated(_multiByteChannel, (_storedInputData[0] << 7) + _storedInputData[1]);
-                                        break;
-                                    case REPORT_VERSION:
-                                        this._majorVersion = _storedInputData[1];
-                                        this._minorVersion = _storedInputData[0];
-                                        break;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            if (inputData < 0xF0)
-                            {
-                                command = inputData & 0xF0;
-                                _multiByteChannel = inputData & 0x0F;
-                                switch (command)
-                                {
-                                    case DIGITAL_MESSAGE:
-                                    case ANALOG_MESSAGE:
-                                    case REPORT_VERSION:
-                                        _waitForData = 2;
-                                        _executeMultiByteCommand = command;
-                                        break;
-                                }
-                            }
-                            else if (inputData == 0xF0)
-                            {
-                                 _parsingSysex = true;
-                                // commands in the 0xF* range don't use channel data
-                            }
-
-                        }
-                    }
-                }
-            }
+            // Wait when method return anything
+            autoEvent.WaitOne();
+            // This line will executes only when inputProcessor are done. For example serialPort is closed.
+            stateTimer.Dispose();
         }
-        #region
+    } // End Arduino class
 
-        private const int MAX_DATA_BYTES = 64;
-        private const int TOTAL_PORTS = 2;
-        private const int SERVO_CONFIG = 0x70; // set max angle, minPulse, maxPulse, freq
-        private const int DIGITAL_MESSAGE = 0x90; // send data for a digital port
-        private const int ANALOG_MESSAGE = 0xE0; // send data for an analog pin (or PWM)
-        private const int REPORT_ANALOG = 0xC0; // enable analog input by pin #
-        private const int REPORT_DIGITAL = 0xD0; // enable digital input by port
-        private const int SET_PIN_MODE = 0xF4; // set a pin to INPUT/OUTPUT/PWM/etc
-        private const int REPORT_VERSION = 0xF9; // report firmware version
-        private const int SYSTEM_RESET = 0xFF; // reset from MIDI
-        private const int START_SYSEX = 0xF0; // start a MIDI SysEx message
-        private const int END_SYSEX = 0xF7; // end a MIDI SysEx message
-        private const int I2C_REQUEST = 0x76; // I2C request messages from a host to an I/O board
-        private const int I2C_REPLY = 0x77; // I2C reply messages from an I/O board to a host
-        private const int I2C_CONFIG = 0x78; // Configure special I2C settings such as power pins and delay times
+    class InputProcessor
+    {
         private SerialPort _serialPort;
-        private int _delay;
+        private Arduino _arduino;
 
+        private bool _parsingSysex;
+        private int _sysexBytesRead;
         private int _waitForData = 0;
         private int _executeMultiByteCommand = 0;
         private int _multiByteChannel = 0;
-        private int[] _storedInputData = new int[MAX_DATA_BYTES];
-        private bool _parsingSysex;
-        private int _sysexBytesRead;
-
-        private volatile int[] _digitalOutputData = new int[MAX_DATA_BYTES];
-        private volatile int[] _digitalInputData = new int[MAX_DATA_BYTES];
-        private volatile int[] _analogInputData = new int[MAX_DATA_BYTES];
+        private int[] _storedInputData = new int[Arduino.MAX_DATA_BYTES];
 
         private int _majorVersion = 0;
         private int _minorVersion = 0;
-        private Thread _readThread = null;
-        private object _locker = new object();
-        #endregion
-    } // End Arduino class
+
+        public InputProcessor(SerialPort serialPort, Arduino arduino)
+        {
+            _serialPort = serialPort;
+            _arduino = arduino;
+        }
+
+        public void InputProcess(Object stateInfo)
+        {
+            AutoResetEvent autoEvent = (AutoResetEvent)stateInfo;
+
+            if (!_serialPort.IsOpen)
+            {
+                // Signal the waiting thread we are done
+                autoEvent.Set();
+                return;
+            }
+
+            if (_serialPort.BytesToRead == 0)
+            {
+                return;
+            }
+
+            int inputData = _serialPort.ReadByte();
+            int command;
+
+            if (_parsingSysex)
+            {
+                if (inputData == Arduino.END_SYSEX)
+                {
+                    _parsingSysex = false;
+                    if (_sysexBytesRead > 5 && _storedInputData[0] == Arduino.I2C_REPLY)
+                    {
+                        byte[] i2cReceivedData = new byte[(_sysexBytesRead - 1) / 2];
+                        for (int i = 0; i < i2cReceivedData.Count(); i++)
+                        {
+                            i2cReceivedData[i] = (byte)(_storedInputData[(i * 2) + 1] | _storedInputData[(i * 2) + 2] << 7);
+                        }
+                        _arduino.callDidI2CDataReveive(i2cReceivedData[0], i2cReceivedData[1], i2cReceivedData.Skip(2).ToArray());
+
+                    }
+                    _sysexBytesRead = 0;
+                }
+                else
+                {
+                    _storedInputData[_sysexBytesRead] = inputData;
+                    _sysexBytesRead++;
+                }
+            }
+            else if (_waitForData > 0 && inputData < 128)
+            {
+                _waitForData--;
+                _storedInputData[_waitForData] = inputData;
+
+                if (_executeMultiByteCommand != 0 && _waitForData == 0)
+                {
+                    //we got everything
+                    switch (_executeMultiByteCommand)
+                    {
+                        case Arduino.DIGITAL_MESSAGE:
+                            int currentDigitalInput = (_storedInputData[0] << 7) + _storedInputData[1];
+                            for (int i = 0; i < 8; i++)
+                            {
+                                if (((1 << i) & (currentDigitalInput & 0xff)) != ((1 << i) & (_arduino._digitalInputData[_multiByteChannel] & 0xff)))
+                                {
+                                    if ((((1 << i) & (currentDigitalInput & 0xff))) != 0)
+                                    {
+                                        _arduino.callDigitalPinUpdated((byte)(i + _multiByteChannel * 8), Arduino.HIGH);
+                                    }
+                                    else
+                                    {
+                                        _arduino.callDigitalPinUpdated((byte)(i + _multiByteChannel * 8), Arduino.LOW);
+                                    }
+                                }
+                            }
+                            _arduino._digitalInputData[_multiByteChannel] = (_storedInputData[0] << 7) + _storedInputData[1];
+
+                            break;
+                        case Arduino.ANALOG_MESSAGE:
+                            _arduino._analogInputData[_multiByteChannel] = (_storedInputData[0] << 7) + _storedInputData[1];
+                            _arduino.callAnalogPinUpdated(_multiByteChannel, (_storedInputData[0] << 7) + _storedInputData[1]);
+                            break;
+                        case Arduino.REPORT_VERSION:
+                            this._majorVersion = _storedInputData[1];
+                            this._minorVersion = _storedInputData[0];
+                            break;
+                    }
+                }
+            }
+            else
+            {
+                if (inputData < 0xF0)
+                {
+                    command = inputData & 0xF0;
+                    _multiByteChannel = inputData & 0x0F;
+                    switch (command)
+                    {
+                        case Arduino.DIGITAL_MESSAGE:
+                        case Arduino.ANALOG_MESSAGE:
+                        case Arduino.REPORT_VERSION:
+                            _waitForData = 2;
+                            _executeMultiByteCommand = command;
+                            break;
+                    }
+                }
+                else if (inputData == 0xF0)
+                {
+                    _parsingSysex = true;
+                    // commands in the 0xF* range don't use channel data
+                }
+
+            }
+        }
+    }
 
 } // End namespace
